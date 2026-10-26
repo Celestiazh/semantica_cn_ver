@@ -1,0 +1,48 @@
+units:
+- name: 深圳市博大建设集团有限公司
+  aliases:
+  - 深圳市博大建设集团
+  type: ''
+- name: 五洲工程顾问集团有限公司
+  aliases:
+  - 五洲工程顾问集团
+  type: ''
+- name: 广州安装集团有限公司
+  aliases:
+  - 广州安装集团
+  type: ''
+- name: 福州建工集团有限公司
+  aliases:
+  - 福州建工集团
+  - 建工集团
+  type: ''
+- name: 福州市建筑设计院有限责任公司
+  aliases:
+  - 福州市建筑设计院
+  type: ''
+- name: 中海监理有限公司
+  aliases:
+  - 中海理有限公司
+  type: ''
+- name: 广东省工业设备安装有限公司
+  aliases:
+  - 广东省工业安装有限公司
+  - 省安公司
+  type: ''
+- name: 深圳市坪山区建筑工务署
+  aliases:
+  - 工务署
+  type: ''
+- name: 深圳市方大科技集团有限公司
+  aliases:
+  - 方大公司
+  type: ''
+- name: 青岛地铁集团有限公司
+  aliases:
+  - 地铁集团
+  type: ''
+- name: 林宁高速项目分包公司
+  aliases:
+  - 后方公司
+  type: ''
+updated: '2026-09-29'

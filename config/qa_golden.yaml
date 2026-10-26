@@ -1,0 +1,40 @@
+# -*- coding: utf-8 -*-
+# 金标问答回归集：每次改提示词/换模型/改代码后跑 tools/qa_regress.py 回归。
+# 字段说明：
+#   q          问题（原样传给 ask_graph.py）
+#   days/since 可选时间窗参数
+#   expect_match   true=应匹配到实体并回答；false=应婉拒（图谱没有的）
+#   must_contain   回答里必须出现的关键词（任一命中即过，列表=或关系）
+#   must_source    出处里必须出现的文件名片段（任一）
+#   forbidden      回答/校验里禁止出现的字串（如编造年份）
+cases:
+  - q: "中建科工参与过哪些项目？分别是什么角色？"
+    expect_match: true
+    must_contain: ["中建科工", "项目"]
+    must_source: ["广东建工科创大厦项目监理例会会议纪要", "坪山交警大队营房建设项目例会纪要"]
+    forbidden: ["2024年"]
+  - q: "拉普拉斯产业园项目有哪些待办事项？由谁负责？"
+    expect_match: true
+    must_contain: ["拉普拉斯", "总包单位"]
+    must_source: ["拉普拉斯产业园主体土建及安装工程"]
+  - q: "青岛市地铁7号线二期工程有哪些待办事项？"
+    expect_match: true
+    must_contain: ["青岛市地铁7号线二期工程"]
+    must_source: ["南部新城北片区"]
+  - q: "吴杰参与了哪些会议？"
+    expect_match: true
+    must_contain: ["吴杰", "监理"]
+    must_source: ["监理例会纪要164"]
+  - q: "工务署参与了什么项目？"
+    expect_match: true
+    tolerate_decline: true      # 简称别名沉淀前：事项可答、角色边缺失，部分婉拒属合理
+    must_contain: ["坪山交警大队营房建设项目"]
+  - q: "--days 30|拉普拉斯产业园项目近期有哪些待办？"
+    q: "拉普拉斯产业园项目近期有哪些待办？"
+    days: 60
+    expect_match: true
+    must_contain: ["拉普拉斯"]
+  - q: "下个月的总施工进度计划是什么？"
+    expect_match: false          # 图谱没有 → 应婉拒，不许编
+  - q: "公司食堂菜单是什么？"
+    expect_match: false

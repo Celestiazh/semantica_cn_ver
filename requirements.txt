@@ -1,0 +1,27 @@
+# 监理纪要知识图谱 · 运行依赖
+#
+# ⚠️ 版本约束一律写在本文件里，不在命令行里写 —— shell 会吃掉 ">" "<"，实测踩过。
+# ⚠️ 注释保持纯 ASCII —— 本机控制台 GBK，非 ASCII 注释在部分工具链下会乱码。
+#
+# 用途分工：
+#   pymupdf                 PDF 取文字层 + 渲染成位图（OCR 前置）
+#   rapidocr_onnxruntime    扫描件 OCR（纯 CPU，实测 5.2s/页 @200dpi）
+#   onnxruntime             rapidocr 的推理后端
+#   opencv-python-headless  图像处理（无 GUI 依赖，服务器可装）
+#   numpy                   数组运算
+#   networkx                图算法（社区检测 / 中心度），自建图那一层用
+#   PyYAML                  配置文件读写
+
+pymupdf>=1.24,<2
+rapidocr_onnxruntime>=1.2,<2
+onnxruntime>=1.17,<2
+opencv-python-headless>=4.9,<6
+numpy>=2.0,<3
+networkx>=3.2,<4
+PyYAML>=6,<7
+openpyxl==3.1.5
+setuptools>=75
+
+# graph/vector DB clients (backend: neo4j / qdrant)
+neo4j>=5,<7
+qdrant-client>=1.12,<2

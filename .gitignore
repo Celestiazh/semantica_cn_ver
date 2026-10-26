@@ -1,0 +1,20 @@
+# ===== 运行环境（本机/第三方，交付时按 README 重建） =====
+.venv/
+sem2_libs/
+__pycache__/
+*.pyc
+.idea/
+.vscode/
+
+# ===== 密钥与本地凭据（绝不入库）=====
+config/*.local
+
+# ===== 过程数据与业务数据（公司纪要/抽取结果，不入库）=====
+var/
+archive/
+
+# ===== 产物（交付包/台账/运行报告，可由流水线重建）=====
+output/*
+!output/演示问题.txt
+!output/启动看板.bat
+*.zip

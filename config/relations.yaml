@@ -1,0 +1,96 @@
+# 关系注册表 —— 节点类型与关系定义
+#
+# ⭐ 这是"加关系不改代码"的落点：新增一类关系 = 在本文件加一段，
+#    抽取器与建图器都从本文件读定义。**不要在代码里硬编码关系名。**
+#
+# 每条边都必须带证据（files/pages/quote），由 graph 层统一写入
+#   edge.properties.evidence = { file, page, quote }
+#
+# 计数说明：observed 是 2026-09-22 在 19 份样本上重建出的真实图（49 节点 / 253 边）里的条数，
+#           用于判断"哪条关系已经在跑、哪条还没实现"。
+version: 1
+schema_version: "2026-09-22.1"
+
+nodes:
+  - type: PERSON
+    desc: 人（参会人员、主持人、记录人、事项责任人）
+    key: 姓名
+    observed: 35
+  - type: ORG
+    desc: 单位（建设/监理/施工/分包/咨询等）
+    key: 单位全称
+    observed: 14
+  - type: PROJECT
+    desc: 项目 / 工程 / 标段
+    key: 项目名
+    observed: 0          # 尚未独立成节点：目前被抽成了 ORG 或散落文本，待修
+  - type: MEETING
+    desc: 一次会议（用 文件名 + 期号 定位，不靠标题文本）
+    key: file + 期号
+    observed: 0          # 同上
+  - type: MATTER
+    desc: 正文事项 / 待办（第 2 层，需模型或 Agent 补字段）
+    key: 事项原文片段
+    observed: 0          # 第 2 层尚未接
+
+relations:
+  # ---------- 已实测在跑 ----------
+  - type: 所属单位
+    from: PERSON
+    to: ORG
+    layer: 1
+    evidence: 参会名单段
+    observed: 94
+  - type: 参会
+    from: PERSON
+    to: MEETING
+    layer: 1
+    evidence: 参会名单段
+    observed: 94
+  - type: 主持人
+    from: PERSON
+    to: MEETING
+    layer: 1
+    observed: 10
+  - type: 记录
+    from: PERSON
+    to: MEETING
+    layer: 1
+    evidence: 表头"记录人："（2026-09-28 新增；有的模板写"会议记录"）
+    observed: 0
+  - type: 属于项目
+    from: MEETING
+    to: PROJECT
+    layer: 1
+    observed: 16
+  # 单位在项目中的角色：统一成一条边 + role 属性，
+  # 不要拆成 5 种边类型（现网数据里被拆成了 施工单位/建设单位/监理单位/全咨单位/总包单位/监理 六种，噪声大）
+  - type: 单位角色
+    from: ORG
+    to: PROJECT
+    layer: 1
+    role_enum: [建设单位, 监理单位, 施工总包, 专业分包, 咨询单位, 其他]
+    observed: 35
+
+  # ---------- 待实现（第 2 层，正文事项） ----------
+  - type: 事项责任单位
+    from: ORG
+    to: MATTER
+    layer: 2
+    requires: 模型或 Agent
+    observed: 0
+  - type: 提出事项
+    from: MEETING
+    to: MATTER
+    layer: 2
+    requires: 模型或 Agent
+    observed: 0
+  - type: 期限
+    from: MATTER
+    to: MATTER
+    layer: 2
+    requires: 期限归一化（"下周五" → 具体日期）
+    observed: 0
+
+  # ---------- 暂不做（档超范围用） ----------
+  # 事项间的因果/依赖、跨期闭环、时序归属（谁何时属于谁）—— 明确不做，避免本体无限膨胀。

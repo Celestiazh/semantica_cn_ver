@@ -1,0 +1,305 @@
+# 监理纪要知识图谱 —— 全局设置
+#
+# 改本文件即可调参，**不需要改代码**（项目硬要求）。
+# 路径可用绝对路径，或相对本项目根目录（kg/）。
+project:
+  name: 监理纪要知识图谱
+  version: "0.1.0"
+
+paths:
+  # 输入：放监理纪要的目录
+  input_dir: "C:/Users/Lenovo/Desktop/Work/22.科工借调/测试数据/会议纪要154"
+  # 中间产物（解析/抽取缓存）
+  work_dir: "var"
+  # 交付产物（graph.json / graph.html / report.md / 人工确认 CSV）
+  output_dir: "output"
+
+parse:
+  # 以下取值沿用已验证的 POC（kg-poc/scripts-0922/kg_parse4.py），不要随意改：
+  #   dpi=220 / 阈值 30 字 / 重复率 0.6 —— 改了要重跑一遍全库验证
+  dpi: 220
+  # 低于该字符数视为"无文字层"，走 OCR
+  text_layer_min_chars: 30
+  # 跨页重复行（页眉/页脚/水印）剔除：在 >=60% 的页上出现即判定为页眉页脚
+  drop_repeated_lines: true
+  header_footer_ratio: 0.6
+  repeat_key_min_len: 4          # 归一化后短于 4 字不参与"重复行"统计
+  repeat_key_max_len: 40         # 超过 40 字的多半是正文，不是页眉
+
+  # 行重建：OCR 按行框吐字，需按 y 坐标聚成视觉行、按纵向间距聚成段落
+  rebuild_paragraphs: true
+  row_tol_min: 6.0               # y 差 <= max(该值, 行高中位数*系数) 视为同一行
+  row_tol_factor: 0.6
+  para_gap_min: 24.0             # 行距 > max(该值, 行距中位数*系数) 视为换段
+  para_gap_factor: 1.9
+
+  # 噪声行正则（可用 (?i) 开大小写不敏感）。**加规则改这里，不改代码。**
+  drop_patterns:
+    - '(?i)aspose|evaluation only|temporary-license'
+    - '(?i)^evaluation$'
+    - '今日水印|相机真实可验|防伪|水印相机'
+    - '^[A-Z0-9]{8,}$'
+
+extract:
+  # 会议名归一：同一个东西的不同叫法（"监理例会 / 监理周例会 / 监理周会"）
+  # ⭐ 这本身就是消解问题，先在这里做最小归一
+  meeting_aliases:
+    监理例会: 监理周例会
+    监理周会: 监理周例会
+    监理会议纪要: 监理周例会
+
+  # 抽取阶段再清一遍（解析层已去水印/试用标记，这里主要去页眉的字母文字）
+  # **加规则改这里，不改代码**
+  clean_patterns:
+    - '(?i)CHONGQING\s*CISDI[^\u4e00-\u9fa5]{0,60}'
+    - '中国五矿'
+    - '(?i)MiCC|HCE|WU4HEA\w+'
+    - '(?i)Evaluation Only[^\u4e00-\u9fa5]{0,80}'
+    - '(?i)Created with an evaluation[^\u4e00-\u9fa5]{0,80}'
+    - '(?i)temporary-license|products\.aspose\.com\S*'
+    - '(?i)Aspose\.Words|Aspose Pty Ltd'
+
+  meeting:
+    # 第 1 层：会议要素（时间/地点/主持/记录/参会人/单位/期号/会议名/项目）—— 纯规则
+    enabled: true
+    # 参会人名过滤（这些不是人名）
+    name_stopwords: [等, 各, 单位, 无, 及, 和, 代表, 人员, 相关, 专家, 负责人, 经理]
+
+    # ⭐ 以下词表全部可改（加词不改代码）。2026-09-28 从代码里搬进来的原因：
+    #    ① "加规则不改代码"是项目铁律；② 角色词表曾在代码与配置里各存一份、**已经不一致**（bug）。
+
+    # 什么算"一个单位"（决定机构名的识别边界）—— 新语料实测缺：署/办公室/指挥部/大队…
+    unit_suffixes: [公司, 集团, 大学, 学院, 科学院, 监理部, 项目部, 设计院, 研究院,
+                    中心, 事务所, 管理局, 局, 站, 署, 委员会, 管委会, 指挥部, 办公室,
+                    管理处, 分局, 分局, 大队, 支队, 总队, 工区, 标段, 分部, 工程部, 监理部]
+    # 角色词（判断"单位在项目里是什么角色"）
+    # 2026-09-28 补：广东建工 / 坪山那批把角色写成 `施工总承包单位广东省建筑工程集团有限公司、`
+    #   —— 角色后面**直接跟单位全名、没有冒号**，原来一条都抽不到 → 25 份文件 0 单位 0 人。
+    role_words: [建设单位, 全咨单位, 监理单位, 总包单位, 施工单位, 施工总承包单位, 总承包单位,
+                 幕墙单位, 高低压单位, 高效机房单位, 设计单位, 勘察单位, 分包单位, 项目管理单位,
+                 项目监理机构, 审计单位, 代建单位, 业主单位, 咨询单位, 供货单位, 检测单位, 使用单位,
+                 钢结构单位, 机电单位, 泛光照明单位, 电梯安装单位, BIM单位, 智能化单位,
+                 消防单位, 精装修单位, 园林单位, 电梯单位]
+    # ⭐ 正文「角色词+单位全名」无冒号扫描（见 meeting.scan_role_units）
+    role_scan_max_gap: 40          # 角色词到单位名之间最多允许多少字
+    role_scan_reject: [汇报, 要求, 整改, 完成, 督促, 尽快, 本周, 上周, 下周, 情况, 工作,
+                       事宜, 问题, 安排, 计划, 落实, 加强, 进行, 组织, 负责, 参与, 分别, 等]
+    # ⭐ 表头区「字段名+值」无冒号写法（坪山：`项目名称坪山交警大队营房建设项目`）
+    #    只在这些词**之前**的区域里找表头，否则正文会大面积误伤
+    header_region_end: [会议纪要内容, 会议内容, 会议主要内容, 纪要内容, 会议要求, 会议纪要正文]
+    # 字段名 -> [写到 info 的哪个键, 值形状(text/date/name/period)]
+    header_fields:
+      项目名称: [项目, text]
+      工程名称: [项目, text]
+      会议名称: [会议, text]
+      会议时间: [会议时间, date]
+      时间: [会议时间, date]
+      会议地点: [会议地点, text]
+      地点: [会议地点, text]
+      主持人: [主持人, name]
+      会议主持: [主持人, name]
+      记录人: [记录人, name]
+      记录: [记录人, name]
+      会议编号: [期号, period]
+      编号: [期号, period]
+      签发人: [签发人, name]
+      组织单位: [组织单位, text]
+    # 参会段表头的"前缀 × 后缀"组合（3×8=24 种写法，见 meeting.py）
+    attend_prefix: [参会, 参加, 与会]
+    attend_suffix: [单位及人员, 单位及参会人员, 单位及代表, 单位及部门, 单位及人员名单,
+                    人员, 单位, 代表]
+    # 主持人 / 记录人的叫法
+    host_words: [主持人, 会议主持, 主持]
+    recorder_words: [记录人, 会议记录, 记录员, 记录]
+    # 会议时间 / 地点 / 期号 的叫法
+    time_words: [会议时间, 时间, 开会时间, 会议日期]
+    place_words: [会议地点, 地点, 会议地址, 会议室]
+    period_words: [期, 次]
+    # 章节标题里出现这些词 → 视为"发言方段落"（用来给条目定"提出方"，见 pending.py）
+    section_role_words: [建设单位, 全咨单位, 监理单位, 总包单位, 施工单位, 设计单位,
+                         勘察单位, 项目监理机构, 项管单位, 施工单位汇报]
+    # 参会段里出现这些 → **本文没有名单**（要显式标记，不能静默空）
+    no_attendee_markers: [详见签到表, 见签到表, 详见会议签到表, 签到表, 附件, 略]
+    # 内容过少的门限（低于此字数视为空壳/占位件，要显式标记）
+    min_content_chars: 200
+    # ⭐ 人工确认过的「人名前缀」—— 用于切开"人名+单位"粘连的实体名
+    #    （实测：`景清涛中建科工集团有限公司` = 人名 景清涛 + 中建科工集团有限公司）。
+    #    判据仍要求"剩余部分是合法单位名"，所以加错了也不会产生假单位。
+    #    发现新的粘连 → 把人名加进来重跑即可（加词不改代码）。
+    #    2026-09-30 补 6 个：A 类参会名单"人名列表末尾+下一家公司名"无分隔符黏连
+    #    （如「骆永辉湖北妙润启力建设工程有限公司」，见 eval/shorthand_clues.md 同源案例）。
+    person_prefixes: [景清涛, 蒋清球, 吴志康, 史昊,
+                      骆永辉, 李小林, 张振刚, 李浪, 王双峰, 何金辉]
+
+  table:
+    # ⭐ 两列表格「单位 | 人员」结构化直出（江苏标准表、签到栏）—— 见 extract/table.py
+    #    前提：解析产物里带 `cells`（x 区间）。这是 2026-09-28 parse `_v=2` 起才有的；
+    #    旧产物没有 cells → 会跳过并在告警里提示"需要重跑解析"。
+    enabled: true
+    left_headers: [与会单位, 参加单位, 单位名称, 参加单位名称]
+    right_headers: [与会人员, 参加人员, 人员姓名, 姓名, 人员名单]
+    # 左列文本要包含这些词之一，才认为"像机构名"（防把「签到栏」「备注」当单位）
+    org_keys: [公司, 集团, 局, 院, 部, 署, 中心, 队, 站, 所, 监理, 城建, 建工,
+               设计, 咨询, 市政, 建设, 施工, 工程, 管理, 研究院, 设计院, 总承包]
+    skip_left_words: [签到栏, 与会单位及人员, 与会单位, 与会人员, 参加单位, 参加人员,
+                      单位名称, 人数, 备注, 签字]
+    # ⛔ 必须带引号：YAML **流式列表**里的 `注:` 会被解析成映射 `{注: null}`，不是字符串
+    #    （踩过：table.py 里拿到 dict，报 "requires string as left operand"）
+    stop_markers: ["注：", "注:", "监制", "本表与"]
+    header_max_len: 8        # 表头单元本身不超过这么多字（长句不算表头）
+    max_row_drop: 400        # 距表头行最多往下找多少 pt
+    # 只从**名称里明确看得出来**的才推角色，其余留给消解（名册）
+    # ⛔ 故意**不放**「建设」：`XX建设有限公司` 常常是施工单位，按名字推会直接推错角色
+    role_hints:
+      监理: 监理单位
+      设计: 设计单位
+      勘察: 勘察单位
+
+  pending:
+    # 第 2 层：正文事项（责任单位 / 事项 / 期限）
+    enabled: true
+    # true  → 只产出「候选条目 + 原文片段」，字段交给 Agent（零模型依赖，默认）
+    # false → 走 llm.provider 自己抽字段
+    candidate_only: true
+    # 条目切分：编号条目 / 括号号 / 圈码 / 中文序号
+    item_start_patterns:
+      - '(?<![\d.])(\d{1,2})[、.](?![\d])'
+      - '([（(](\d{1,2})[）)])'
+      - '([①-⑳])'
+      - '([一二三四五六七八九十]{1,2}、)'
+    # 触发词：命中才算"待办候选"（子串匹配）
+    trigger_words: [要求, 应当, 应, 需要, 需, 整改, 督促, 加强, 严格, 尽快, 及时, 落实,
+                    严禁, 禁止, 不得, 必须, 确保, 避免, 配合, 跟进, 推动, 须于, 须在, 须由, 限期, 闭环]
+    # 纯陈述进度（"完成 100%"）不算待办 —— 除非同一句里出现下面的强要求词
+    progress_only_patterns: ['完成\s*\d+\s*%']
+    strong_requirement_words: [要求, 整改, 督促, 限期, 必须, 严禁, 不得]
+    min_len: 10          # 长度闸门：滤掉碎片
+    max_len: 500         # 与滤掉整段粘连
+    # 责任单位：角色**闭集**（必须精确匹配 —— 泛匹配会跨界，把映射表整体错位）
+    role_set: [建设单位, 全咨单位, 监理单位, 总包单位, 施工单位, 幕墙单位, 高低压单位,
+               高效机房单位, 设计单位, 勘察单位, 分包单位, 项目管理单位, 项目监理机构, 审计单位]
+    # 责任主体句式（优先级高于角色词）
+    subject_patterns:
+      - '(?:要求|督促|请|由|建议|落实)\s*([\u4e00-\u9fa5]{2,10}?(?:单位|部门|公司|集团|设计院|项目部|专业))'
+    # 单位简称（原文里出现简称直接认）
+    short_orgs: [中建科工, 博大建设, 广州安装, 南京福加, 普利, 华森设计院, 华森设计,
+                 供电局, 公诚管理咨询, 赛迪, 大沙河, 拉普拉斯, 齐鲁工大, 惠阳高级中学]
+    # 期限：绝对日期 → 相对时间 → 紧迫词（按顺序取第一个命中）
+    deadline_patterns:
+      - '\d{1,2}\s*月\s*\d{1,2}\s*[日号]前?'
+      - '下[周月]|本周|每周|即日|会后|限期|两日内|周三前|周五前|下周二|下周三|下周五'
+      - '尽快|及时|抓紧|尽早|即将'
+    # 闭环标记（会议确认 / 答复 / 已完成 …）
+    close_patterns: ['（[^）]{0,12}(?:会议确认|会议确定|答复|回复|已[^）]{0,8}完成)[^）]{0,200}）']
+
+llm:
+  # none                → 第 2 层只出候选（Agent 模式，服务零模型依赖）
+  # ollama              → 本地模型
+  # openai-compatible   → 任何兼容 /v1/chat/completions 的内部或外部服务
+  #                       ⭐ 混元 Hy3（vLLM/SGLang）走这条
+  provider: openai-compatible
+  model: "hy3"
+  base_url: "http://123.184.7.210:8007/v1"
+  # api_key 已移入 config/llm_key.local（交付打包排除该文件），见下 api_key_file
+  # ⛔⛔ 【交付 / 打包 / 外发 / 截图前，必须删除上方那一行 api_key】—— 它现在是明文写在主配置里。
+  #    key 的三种来源（优先级：api_key > 环境变量 > 本地文件）：
+  #      ① api_key          —— 现在这种写法：最省事，但最容易跟着交付物流出去（config/ 一定会被打包）
+  #      ② 环境变量 HY3_API_KEY —— 不落盘；但换机器要重设，交接时别人不知道要配什么
+  #      ③ config/llm_key.local —— 只放一行；交付时直接排除（文件名自带"本地"语义，最不容易漏）
+  api_key_env: "HY3_API_KEY"
+  api_key_file: "config/llm_key.local"
+  # 自建大模型首次加载/批量调用可能超过 60s，给足
+  timeout_s: 120
+  # ⭐ 批量：一次喂多少条候选。
+  #    ⛔ **实测结论（2026-09-28）：必须用 1（逐条）**。
+  #    阶段 2 用 batch=17 跑 17 条难样本：两轮只有 1/17 一致，多条的 matter 变成了**其它条目的内容**，
+  #    还有 6 条填了原文里根本没有的"施工单位/总包单位"。**批量会张冠李戴，直接产出错误结论。**
+  #    速度上批量并不划算（实测 12 条）：batch=1 共 7.5s / batch=5 共 6.4s（**只快 1 秒**），
+  #    但 token 是 308 vs 123 每条 —— 省的那点 token 不值得冒错配风险。
+  #    外推：batch=1 跑 297 条约 2 分 54 秒，跑 1000 条约 10 分钟。完全可接受。
+  batch_size: 1
+  # ⭐ Hy3 专用：no_think / low / high。抽取任务必须 no_think
+  #    （不关会把 token 烧在思维链上，且思维链里的 JSON 会污染解析）。置空则不发送该字段。
+  reasoning_effort: "no_think"
+
+resolve:
+  # dedup 相似度阈值（实测 0.8 会出 40% 误报，故只用来"提候选"，不做判定）
+  similarity_threshold: 0.8
+  # 名册缺失时是否必须在输出里显式告警
+  warn_when_roster_missing: true
+  # ⭐ 出处文件定位：图里的证据只存"文件名"，人工要打开原文就必须给**完整路径**。
+  #    这里列出可能放语料的根目录（向下找 2 层）—— 语料分多批/多目录时（如
+  #    会议纪要154 与旧批次 监理会议纪要原文）都配进来，否则 CSV 里会出现找不到的文件。
+  corpus_search_dirs:
+    - "C:/Users/Lenovo/Desktop/Work/22.科工借调/测试数据"
+
+graph:
+  # ⭐ 分工既定（不是"可选的适配器"）：
+  #   我们自建 ① 取文本 ② 抽取 ③ 消解          —— 它的 DoclingParser / NERExtractor / dedup 在这三处不够用（已实测）
+  #   交给它   ④ 建图存储 ⑤ 图算法 ⑥ 关系查询 ⑦ 可视化 ⑧ 流程血统 —— 这些是它的强项（已实测好用）
+  # 我们的活到"产出带证据的 graph.json"为止，然后导入它的服务端。
+  backend: semantica
+  semantica:
+    base_url: "http://127.0.0.1:8000"
+    # 上线必须配（源码明确警告不要开 anonymous 暴露到 localhost 之外；受保护路由未配 key 返回 503）
+    api_key_env: "SEMANTICA_API_KEY"
+    timeout_s: 30
+    # 启动时探活 + 拉一次 /api/graph/stats，确认服务与图都在
+    verify_on_start: true
+    # ⚠️ 它要 300+ 个包 → **独立环境跑服务**，我们的 venv 保持轻量（7 个包），只走 HTTP
+    deploy_note: "服务单独部署（独立 venv）；本项目只依赖 HTTP，不 import semantica"
+
+provenance:
+  # 两条线，并存（不是二选一）：
+  # ① 原文出处 = 我们的责任 —— "这句结论出自哪份文件哪一页哪句话"
+  #    ⚠️ 实测：放**顶层** evidence 字段会被丢弃，**必须放 properties 里**才能往返保留
+  #    去重说明：一条边在 N 份文件里出现会被并成 1 条 → evidence 要支持**多出处**（数组）
+  evidence_in_edge_properties: true
+  # ② 流程血统 = 它送的能力 —— "这条数据是谁/什么流程/什么时候生成的"（W3C PROV-O）
+  #    ⚠️ 默认 InMemoryStorage **不落盘**，服务重启即失 → 要持久化必须显式配 storage_path
+  #    ⚠️ 它不随 /api/import 走（也没有任何 POST 写入端点）→ 必须单独登记
+  process_tracking: false
+  semantica_storage_path: ""
+
+serve:
+  http_port: 8100
+  mcp_enabled: false
+
+embeddings:
+  # 语义检索 / AgentMemory / 相似案例用。provider 对应 Semantica 的 embedding store：
+  #   openai-compatible → 任何兼容 /v1/embeddings 的服务（需先跑 tools/patch_semantica_embedding.py 支持 base_url）
+  #   fastembed         → 本地模型（需联网下载，内网不可用）
+  provider: openai-compatible
+  base_url: "http://123.184.7.210:8101/v1"
+  model: "qwen3-embedding-8B"
+  api_key_file: "config/embed_key.local"
+
+intelligence:
+  remember_answers: true         # ask_graph 问答后自动沉淀结论进 Agent 记忆（语义检索用）
+  retention_days: null           # 记忆保留天数（null=不限）
+
+# === 预留：服务器侧启用时填写；本机留空即用默认（faiss 本地 / 内存图），不影响任何功能 ===
+vector_store:
+  backend: qdrant                # qdrant=服务器向量库（本机代码直连）；faiss/sqlite=本机文件模式（离线兜底）
+  dimension: 4096                # 与 embeddings.model 的输出维度一致（qwen3-embedding-8B=4096）
+  index_dir: "var/intelligence"  # faiss 模式的落盘位置（qdrant 模式不使用）
+  qdrant:
+    url: "http://123.184.7.210:6333"
+    api_key_file: "config/qdrant_key.local"
+    collections: {memory: "kg_memory", decisions: "kg_decisions"}
+    client_options: {check_compatibility: false}   # ★ 版本兼容入口：客户端/服务端版本差异在此消化，不改代码
+
+graph_backend:
+  backend: neo4j                 # ★ 图库执政：运行时图由 Neo4j 供给（json=流水线产物+备份）
+  neo4j:                         # 连接信息：tools/import_neo4j.py 灌库 + 将来决策混合检索用
+    uri: "bolt://123.184.7.210:7687"
+    user: "neo4j"
+    password_file: "config/neo4j_pwd.local"
+    driver_options: {}           # ★ 版本兼容入口：驱动参数在此透传（加密/超时/池化等），不改代码
+
+mysql_business:                  # 预留：业务库（台账/决策记录落库供业务系统查询；MySQL 非图后端）
+  # host: "..." 
+  # port: 3306
+  # database: "..."
+  # user_env: "KG_MYSQL_USER"
+  # password_env: "KG_MYSQL_PWD"
