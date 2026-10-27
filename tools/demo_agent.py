@@ -51,8 +51,11 @@ SYSTEM = (
     "**回答必须覆盖其中每一个实体**（该实体无数据的也要单独一小节明说「无记录」），"
     "要么分别作答要么列出候选请用户澄清——禁止只答其一、禁止合并不同法人的事实；"
     "same_legal_entity_groups 里的名字是同一法人，可合并陈述。\n"
-    "7. ⛔ 开放盘点类问题（「有些什么数据/介绍一下」）：按 facts_summary 的类型分布**逐类汇报**"
-    "（每类：条数 + 代表样例），一类都不能漏；未逐条展开的类注明「共 N 条，可指定类型查看明细」；"
+    "7. ⛔ 开放盘点类问题（「有些什么数据/介绍一下」）：按 facts_summary 的类型分布**逐类汇报**，"
+    "**每类最多列 5 条代表样例（优先内容完整的），并标注该类总数**"
+    "——例如「事项责任单位：共 43 条，代表样例：…（5 条）」，"
+    "**禁止在盘点回答中逐条枚举超过 5 条同类事实**（把 token 预算花在枚举上会导致后面的实体/类别被截断）；"
+    "用户明确说「列出全部」时才逐条展开；"
     "search_entity 的 truncated=true 时注明「候选已截断」并建议用户缩小范围。"
 )
 
@@ -64,7 +67,7 @@ def run_agent(provider, question):
     messages = [{"role": "system", "content": SYSTEM},
                 {"role": "user", "content": question}]
     for turn in range(1, MAX_TURNS + 1):
-        payload = {"model": provider.model, "temperature": 0, "max_tokens": 2048,
+        payload = {"model": provider.model, "temperature": 0, "max_tokens": 4096,
                    "messages": messages, "tools": OPENAI_TOOLS}
         if getattr(provider, "reasoning_effort", ""):
             payload["chat_template_kwargs"] = {"reasoning_effort": provider.reasoning_effort}
