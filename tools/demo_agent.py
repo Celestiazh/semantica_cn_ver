@@ -8,6 +8,16 @@
     .venv\\Scripts\\python.exe tools\\demo_agent.py "工务署参与了什么项目？"
     .venv\\Scripts\\python.exe tools\\demo_agent.py output\\演示问题.txt   # 一行一个问题，逐个跑
     .venv\\Scripts\\python.exe tools\\demo_agent.py            # 交互式
+
+    neo4j图库查询演示
+    MATCH (n:KGEntity {name:'中建科工集团有限公司'})-[r]->(m) RETURN n, r, m
+
+MATCH (n:KGEntity {name:'中建科工集团有限公司'})-[r]-(m) RETURN n, r, m
+
+MATCH (n:KGEntity {name:'中建科工集团有限公司'})-[r]-(m)
+RETURN r.type AS 关系类型, count(*) AS 条数
+
+
 """
 import json
 import sys
@@ -27,7 +37,7 @@ MAX_TURNS = 6
 #   优先级：命令行参数 > 这里的列表 > 交互式提问
 
 DEMO_QUESTIONS = [
-    "目前为止 提问过几次关于中建科工的问题",
+    "青岛市地铁7号线二期工程有哪些待办？由谁负责？",
 ]
 
 
